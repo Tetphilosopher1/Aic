@@ -1,0 +1,46 @@
+name: Generate Article API
+
+on:
+  workflow_dispatch:
+    inputs:
+      api_key:
+        description: 'API Key'
+        required: true
+      topic:
+        description: 'Article Topic'
+        required: true
+      tone:
+        description: 'Writing Tone'
+        default: 'professional'
+      length:
+        description: 'Article Length'
+        default: '2000'
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+      
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+      
+      - name: Install dependencies
+        run: |
+          pip install anthropic supabase requests
+      
+      - name: Generate Article
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          INPUT_API_KEY: ${{ github.event.inputs.api_key }}
+          INPUT_TOPIC: ${{ github.event.inputs.topic }}
+          INPUT_TONE: ${{ github.event.inputs.tone }}
+          INPUT_LENGTH: ${{ github.event.inputs.length }}
+        run: |
+          python api/generate_article.py
