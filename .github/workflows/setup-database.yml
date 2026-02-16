@@ -1,0 +1,86 @@
+name: Setup Supabase Database
+
+on:
+  workflow_dispatch:
+
+jobs:
+  setup:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+      
+      - name: Install dependencies
+        run: |
+          pip install supabase requests
+      
+      - name: Create setup script
+        run: |
+          cat > setup_db.py << 'EOF'
+          #!/usr/bin/env python3
+          import os
+          from supabase import create_client, Client
+
+          SUPABASE_URL = os.getenv("SUPABASE_URL")
+          SUPABASE_KEY = os.getenv("SUPABASE_KEY")
+
+          print("=" * 60)
+          print("Supabase データベースセットアップ")
+          print("=" * 60)
+
+          supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
+          print("✅ Supabase接続成功")
+
+          # テーブル存在確認
+          try:
+              result = supabase.table("users").select("count").execute()
+              print(f"✅ usersテーブルは既に存在します（{len(result.data)}件）")
+              
+              # 既存ユーザー表示
+              users = supabase.table("users").select("*").execute()
+              for user in users.data:
+                  print(f"  - {user['email']} ({user['plan_type']})")
+                  
+          except Exception as e:
+              print(f"⚠️ usersテーブルが見つかりません: {e}")
+              print("\n【手動セットアップが必要です】")
+              print("以下のSQLをSupabase SQL Editorで実行してください:")
+              print("-" * 60)
+              print("""
+          CREATE TABLE IF NOT EXISTS users (
+              id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+              email TEXT UNIQUE NOT NULL,
+              api_key TEXT UNIQUE NOT NULL,
+              subscription_status TEXT DEFAULT 'inactive',
+              plan_type TEXT DEFAULT 'free',
+              plan_limit INTEGER DEFAULT 0,
+              monthly_usage INTEGER DEFAULT 0,
+              total_usage INTEGER DEFAULT 0,
+              stripe_customer_id TEXT,
+              created_at TIMESTAMP DEFAULT NOW(),
+              last_used_at TIMESTAMP
+          );
+
+          INSERT INTO users (email, api_key, subscription_status, plan_type, plan_limit)
+          VALUES ('test@example.com', 'ask_test_demo_12345', 'active', 'pro', 100)
+          ON CONFLICT (email) DO NOTHING;
+              """)
+              print("-" * 60)
+
+          print("\n" + "=" * 60)
+          print("セットアップ完了")
+          print("=" * 60)
+          EOF
+      
+      - name: Run setup
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+        run: |
+          python setup_db.py
