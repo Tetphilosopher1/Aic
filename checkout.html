@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>決済 - AI Content Studio</title>
+    <script src="https://js.stripe.com/v3/"></script>
+</head>
+<body>
+    <script>
+        // Stripeの公開可能キーを設定
+        const stripe = Stripe('pk_live_YOUR_PUBLISHABLE_KEY'); // ← ここに公開可能キーを入力
+        
+        // プラン情報
+        const plans = {
+            starter: 'price_XXXXX', // ← StripeのPrice IDに置き換え
+            pro: 'price_YYYYY',
+            unlimited: 'price_ZZZZZ'
+        };
+        
+        // URLパラメータからプランを取得
+        const params = new URLSearchParams(window.location.search);
+        const plan = params.get('plan');
+        
+        if (plan && plans[plan]) {
+            // Stripe Checkoutセッションを作成
+            fetch('https://api.stripe.com/v1/checkout/sessions', {
+                method: 'POST',
+                headers: {
+                    'Authorization': 'Bearer sk_live_YOUR_SECRET_KEY', // ← シークレットキー
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                },
+                body: new URLSearchParams({
+                    'success_url': 'https://tetphilosopher.com/success',
+                    'cancel_url': 'https://tetphilosopher.com/ai-content-studio',
+                    'mode': 'subscription',
+                    'line_items[0][price]': plans[plan],
+                    'line_items[0][quantity]': '1'
+                })
+            })
+            .then(res => res.json())
+            .then(session => {
+                // Checkoutページにリダイレクト
+                stripe.redirectToCheckout({ sessionId: session.id });
+            });
+        } else {
+            alert('プランが選択されていません');
+            window.location.href = '/ai-content-studio';
+        }
+    </script>
+</body>
+</html>
