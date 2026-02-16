@@ -1,31 +1,42 @@
 #!/usr/bin/env python3
 """
-AI記事生成API - Supabase認証版
+AI記事生成API - Supabase認証版（修正版）
 """
 import os
 import sys
 import json
 from datetime import datetime
-from supabase import create_client, Client
 import anthropic
+import requests
 
-# Supabase接続
+# 環境変数
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY")
 
-supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
-claude_client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
+# Supabase REST API用のヘッダー
+SUPABASE_HEADERS = {
+    "apikey": SUPABASE_KEY,
+    "Authorization": f"Bearer {SUPABASE_KEY}",
+    "Content-Type": "application/json"
+}
 
 def verify_and_get_user(api_key):
     """APIキー検証とユーザー情報取得"""
     try:
-        response = supabase.table("users").select("*").eq("api_key", api_key).execute()
+        # Supabase REST APIで直接クエリ
+        url = f"{SUPABASE_URL}/rest/v1/users?api_key=eq.{api_key}&select=*"
+        response = requests.get(url, headers=SUPABASE_HEADERS)
         
-        if not response.data or len(response.data) == 0:
+        if response.status_code != 200:
+            return {"error": f"API呼び出しエラー: {response.status_code}"}
+        
+        users = response.json()
+        
+        if not users or len(users) == 0:
             return {"error": "無効なAPIキーです"}
         
-        user = response.data[0]
+        user = users[0]
         
         # サブスクリプション確認
         if user["subscription_status"] != "active":
@@ -42,6 +53,8 @@ def verify_and_get_user(api_key):
 
 def generate_article(topic, tone="professional", length=2000):
     """Claude APIで記事生成"""
+    
+    claude_client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
     
     prompt = f"""あなたはAI活用の専門家です。
 
@@ -86,15 +99,17 @@ def generate_article(topic, tone="professional", length=2000):
     except Exception as e:
         return {"error": f"生成エラー: {str(e)}"}
 
-def increment_usage(user_id):
+def increment_usage(user_id, current_monthly, current_total):
     """使用量をカウントアップ"""
     try:
-        supabase.table("users").update({
-            "monthly_usage": user["monthly_usage"] + 1,
-            "total_usage": user["total_usage"] + 1,
+        url = f"{SUPABASE_URL}/rest/v1/users?id=eq.{user_id}"
+        data = {
+            "monthly_usage": current_monthly + 1,
+            "total_usage": current_total + 1,
             "last_used_at": datetime.now().isoformat()
-        }).eq("id", user_id).execute()
-        return True
+        }
+        response = requests.patch(url, headers=SUPABASE_HEADERS, json=data)
+        return response.status_code == 200 or response.status_code == 204
     except:
         return False
 
@@ -133,7 +148,7 @@ def main():
         sys.exit(1)
     
     # 使用量カウント
-    increment_usage(user["id"])
+    increment_usage(user["id"], user["monthly_usage"], user["total_usage"])
     
     # 結果出力
     result = {
@@ -148,7 +163,7 @@ def main():
     
     print("\n✅ 生成成功！")
     print(f"タイトル: {article['title']}")
-    print(json.dumps(result, ensure_ascii=False))
+    print(json.dumps(result, ensure_ascii=False, indent=2))
 
 if __name__ == "__main__":
     main()
