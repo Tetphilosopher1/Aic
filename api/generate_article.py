@@ -1,60 +1,32 @@
 #!/usr/bin/env python3
 """
-AI記事生成API - Supabase認証版（修正版）
+AI記事生成API - シンプル版（まず動かす）
 """
 import os
 import sys
 import json
-from datetime import datetime
 import anthropic
-import requests
 
-# 環境変数
-SUPABASE_URL = os.getenv("SUPABASE_URL")
-SUPABASE_KEY = os.getenv("SUPABASE_KEY")
-ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY")
-
-# Supabase REST API用のヘッダー
-SUPABASE_HEADERS = {
-    "apikey": SUPABASE_KEY,
-    "Authorization": f"Bearer {SUPABASE_KEY}",
-    "Content-Type": "application/json"
+# 簡易認証（後でSupabaseに移行）
+VALID_API_KEYS = {
+    "ask_test_demo_12345": {
+        "email": "test@example.com",
+        "plan": "pro",
+        "limit": 100,
+        "used": 0
+    }
 }
 
-def verify_and_get_user(api_key):
-    """APIキー検証とユーザー情報取得"""
-    try:
-        # Supabase REST APIで直接クエリ
-        url = f"{SUPABASE_URL}/rest/v1/users?api_key=eq.{api_key}&select=*"
-        response = requests.get(url, headers=SUPABASE_HEADERS)
-        
-        if response.status_code != 200:
-            return {"error": f"API呼び出しエラー: {response.status_code}"}
-        
-        users = response.json()
-        
-        if not users or len(users) == 0:
-            return {"error": "無効なAPIキーです"}
-        
-        user = users[0]
-        
-        # サブスクリプション確認
-        if user["subscription_status"] != "active":
-            return {"error": "有効なサブスクリプションが必要です"}
-        
-        # 使用量制限チェック
-        if user["monthly_usage"] >= user["plan_limit"]:
-            return {"error": f"月間使用制限に達しました ({user['monthly_usage']}/{user['plan_limit']})"}
-        
-        return user
-        
-    except Exception as e:
-        return {"error": f"認証エラー: {str(e)}"}
+def verify_api_key(api_key):
+    """APIキー検証（簡易版）"""
+    if api_key in VALID_API_KEYS:
+        return VALID_API_KEYS[api_key]
+    return None
 
 def generate_article(topic, tone="professional", length=2000):
     """Claude APIで記事生成"""
     
-    claude_client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
+    client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
     
     prompt = f"""あなたはAI活用の専門家です。
 
@@ -71,10 +43,10 @@ def generate_article(topic, tone="professional", length=2000):
 - SEO最適化済み
 
 以下のJSON形式のみで出力:
-{{"title": "【初心者向け】タイトル", "content": "<h2>見出し</h2><p>本文</p>", "meta_description": "120文字の説明", "keywords": ["キーワード1", "キーワード2"]}}"""
+{{"title": "【初心者向け】タイトル32文字以内", "content": "<h2>見出し</h2><p>本文を{length}文字程度で</p>", "meta_description": "120文字の説明", "keywords": ["キーワード1", "キーワード2", "キーワード3"]}}"""
 
     try:
-        message = claude_client.messages.create(
+        message = client.messages.create(
             model="claude-sonnet-4-20250514",
             max_tokens=4000,
             temperature=0.7,
@@ -99,20 +71,6 @@ def generate_article(topic, tone="professional", length=2000):
     except Exception as e:
         return {"error": f"生成エラー: {str(e)}"}
 
-def increment_usage(user_id, current_monthly, current_total):
-    """使用量をカウントアップ"""
-    try:
-        url = f"{SUPABASE_URL}/rest/v1/users?id=eq.{user_id}"
-        data = {
-            "monthly_usage": current_monthly + 1,
-            "total_usage": current_total + 1,
-            "last_used_at": datetime.now().isoformat()
-        }
-        response = requests.patch(url, headers=SUPABASE_HEADERS, json=data)
-        return response.status_code == 200 or response.status_code == 204
-    except:
-        return False
-
 def main():
     """メイン処理"""
     
@@ -123,23 +81,27 @@ def main():
     length = int(os.getenv("INPUT_LENGTH", "2000"))
     
     print("=" * 60)
-    print("AI記事生成API")
+    print("AI記事生成API - シンプル版")
     print("=" * 60)
     
     # 認証
-    print("\n認証中...")
-    user = verify_and_get_user(api_key)
+    print(f"\n認証中... (API Key: {api_key[:20]}...)")
+    user = verify_api_key(api_key)
     
-    if "error" in user:
-        result = {"success": False, "error": user["error"]}
+    if not user:
+        result = {"success": False, "error": "無効なAPIキーです"}
         print(json.dumps(result, ensure_ascii=False))
         sys.exit(1)
     
-    print(f"✅ 認証成功: {user['email']} ({user['plan_type']})")
-    print(f"使用量: {user['monthly_usage']}/{user['plan_limit']}")
+    print(f"✅ 認証成功: {user['email']} ({user['plan']})")
+    print(f"使用量: {user['used']}/{user['limit']}")
     
     # 記事生成
-    print(f"\n記事生成中: {topic}")
+    print(f"\n記事生成中...")
+    print(f"トピック: {topic}")
+    print(f"トーン: {tone}")
+    print(f"文字数: {length}")
+    
     article = generate_article(topic, tone, length)
     
     if "error" in article:
@@ -147,22 +109,23 @@ def main():
         print(json.dumps(result, ensure_ascii=False))
         sys.exit(1)
     
-    # 使用量カウント
-    increment_usage(user["id"], user["monthly_usage"], user["total_usage"])
-    
     # 結果出力
     result = {
         "success": True,
         "data": article,
         "usage": {
-            "used": user["monthly_usage"] + 1,
-            "limit": user["plan_limit"],
-            "remaining": user["plan_limit"] - user["monthly_usage"] - 1
+            "used": user['used'] + 1,
+            "limit": user['limit'],
+            "remaining": user['limit'] - user['used'] - 1
         }
     }
     
-    print("\n✅ 生成成功！")
+    print("\n" + "=" * 60)
+    print("✅ 生成成功！")
+    print("=" * 60)
     print(f"タイトル: {article['title']}")
+    print(f"文字数: {len(article['content'])}文字")
+    print(f"\n--- 完全な結果 (JSON) ---")
     print(json.dumps(result, ensure_ascii=False, indent=2))
 
 if __name__ == "__main__":
