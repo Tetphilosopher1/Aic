@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Content Studio - AI記事自動生成サービス</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            line-height: 1.6;
+            color: #333;
+        }
+        
+        .hero {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 80px 20px;
+            text-align: center;
+        }
+        
+        .hero h1 {
+            font-size: 48px;
+            margin-bottom: 20px;
+        }
+        
+        .hero p {
+            font-size: 20px;
+            margin-bottom: 40px;
+            opacity: 0.9;
+        }
+        
+        .cta-button {
+            background: white;
+            color: #667eea;
+            padding: 18px 40px;
+            font-size: 18px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: transform 0.2s;
+        }
+        
+        .cta-button:hover {
+            transform: scale(1.05);
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 60px 20px;
+        }
+        
+        .features {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 30px;
+            margin: 60px 0;
+        }
+        
+        .feature {
+            background: #f8f9fa;
+            padding: 30px;
+            border-radius: 12px;
+            text-align: center;
+        }
+        
+        .feature-icon {
+            font-size: 48px;
+            margin-bottom: 20px;
+        }
+        
+        .pricing {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 30px;
+            margin: 60px 0;
+        }
+        
+        .plan {
+            background: white;
+            border: 2px solid #e0e0e0;
+            border-radius: 12px;
+            padding: 40px;
+            text-align: center;
+            transition: transform 0.3s, border-color 0.3s;
+        }
+        
+        .plan:hover {
+            transform: translateY(-10px);
+            border-color: #667eea;
+        }
+        
+        .plan.featured {
+            border-color: #667eea;
+            border-width: 3px;
+            transform: scale(1.05);
+        }
+        
+        .plan h3 {
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+        
+        .plan .price {
+            font-size: 48px;
+            font-weight: bold;
+            color: #667eea;
+            margin: 20px 0;
+        }
+        
+        .plan .price span {
+            font-size: 16px;
+            color: #666;
+        }
+        
+        .plan ul {
+            list-style: none;
+            margin: 30px 0;
+            text-align: left;
+        }
+        
+        .plan li {
+            padding: 10px 0;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        
+        .plan li:before {
+            content: "✓ ";
+            color: #667eea;
+            font-weight: bold;
+        }
+        
+        .signup-button {
+            background: #667eea;
+            color: white;
+            padding: 15px 30px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            width: 100%;
+            font-weight: bold;
+        }
+        
+        .signup-button:hover {
+            background: #5568d3;
+        }
+    </style>
+</head>
+<body>
+    <div class="hero">
+        <h1>🚀 AI Content Studio</h1>
+        <p>ボタン1つで高品質なブログ記事を自動生成</p>
+        <button class="cta-button" onclick="scrollToPricing()">
+            今すぐ始める →
+        </button>
+    </div>
+    
+    <div class="container">
+        <div class="features">
+            <div class="feature">
+                <div class="feature-icon">⚡️</div>
+                <h3>超高速生成</h3>
+                <p>Claude AIで30秒以内に2000文字の記事を生成</p>
+            </div>
+            
+            <div class="feature">
+                <div class="feature-icon">🎯</div>
+                <h3>SEO最適化済み</h3>
+                <p>検索エンジンに最適化された構造で自動生成</p>
+            </div>
+            
+            <div class="feature">
+                <div class="feature-icon">💡</div>
+                <h3>初心者向け</h3>
+                <p>専門知識不要で誰でも簡単に使える</p>
+            </div>
+        </div>
+        
+        <h2 style="text-align: center; margin: 80px 0 40px;">料金プラン</h2>
+        
+        <div class="pricing" id="pricing">
+            <div class="plan">
+                <h3>スターター</h3>
+                <div class="price">¥2,980<span>/月</span></div>
+                <ul>
+                    <li>30記事/月</li>
+                    <li>2000文字/記事</li>
+                    <li>メールサポート</li>
+                </ul>
+                <button class="signup-button" onclick="subscribe('starter')">
+                    今すぐ登録
+                </button>
+            </div>
+            
+            <div class="plan featured">
+                <h3>プロ</h3>
+                <div class="price">¥4,980<span>/月</span></div>
+                <ul>
+                    <li>100記事/月</li>
+                    <li>4000文字/記事</li>
+                    <li>優先サポート</li>
+                    <li>SEOキーワード分析</li>
+                </ul>
+                <button class="signup-button" onclick="subscribe('pro')">
+                    今すぐ登録
+                </button>
+            </div>
+            
+            <div class="plan">
+                <h3>無制限</h3>
+                <div class="price">¥9,800<span>/月</span></div>
+                <ul>
+                    <li>無制限</li>
+                    <li>6000文字/記事</li>
+                    <li>24時間サポート</li>
+                    <li>カスタムトーン</li>
+                    <li>優先処理</li>
+                </ul>
+                <button class="signup-button" onclick="subscribe('unlimited')">
+                    今すぐ登録
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        function scrollToPricing() {
+            document.getElementById('pricing').scrollIntoView({behavior: 'smooth'});
+        }
+        
+        function subscribe(plan) {
+            // Stripe Checkoutに遷移（Phase 2で実装）
+            window.location.href = 'https://tetphilosopher.com/checkout?plan=' + plan;
+        }
+    </script>
+</body>
+</html>
